@@ -1,0 +1,62 @@
+#include <iostream>
+#include <vector>       //For dynamically sized arrays
+#include <time.h>       //For randomize the random seed initialization
+#include <math.h>       //For log
+
+using namespace std;
+
+#define ARRAY_SIZE(array) (sizeof((array))/sizeof((array[0])))
+
+double generateU(){
+    return ((double) rand() / (double)(RAND_MAX));
+}
+double generateWeibell(double alpha, double beta){
+    return beta * exp(((1/alpha)*log(-log(generateU()))));
+}
+double generateTimeToBreak(double parameter){
+    return 6;
+    //fill later
+}
+
+
+int main()
+{
+    srand(time(NULL)); //Randomize seed initialization
+    double totalCosts[8];           //arrays to hold overall results for each configuration of machines to compare efficiency
+    double totalRevenue[8];
+    double machineDownTime[8];
+    double slowProductionRate = 0;              //Need actual values
+    double fastProductionRate = 0;              //Need actual values
+    double slowMachineBreakTimeAlpha = 1;       //Need actual values
+    double slowMachineBreakTimeBeta = 1;        //Need actual values
+    double fastMachineBreakTimeAlpha = 2;       //Need actual values
+    double fastMachineBreakTimeBeta = 2;        //Need actual values
+    for(int i = 0; i <= 7; i++){    //go through each possible combination of types of machines where i is the number of fast machines
+        double time = 0;
+        double slowRepairQueueLength = 0;
+        double fastRepairQueueLength = 0;
+        double nextFastMachineBreakTime = 9999999;      //To know when the next machine will break
+        double nextFastMachineBreakNumber = 0;          //To locate the machine that will break next
+        double nextSlowMachineBreakTime = 9999999;
+        double nextSlowMachineBreakNumber = 0;
+        std::vector<double> slowMachineBreakdownTimes;
+        std::vector<double> fastMachineBreakdownTimes;
+        for(int j = 0; j < (7-i); j++){     //Initialize when each slow machine will break down
+            slowMachineBreakdownTimes.push_back(generateWeibell(slowMachineBreakTimeAlpha, slowMachineBreakTimeBeta));
+            if(slowMachineBreakdownTimes[j] < nextSlowMachineBreakTime){     //Finds the soonest event
+                nextSlowMachineBreakTime = slowMachineBreakdownTimes[j];
+                nextSlowMachineBreakNumber = j;
+            }
+        }
+        for(int j = 0; j < fastMachineBreakdownTimes.size(); j++){     //Initialize when each fast machine will break down
+            fastMachineBreakdownTimes[j] = generateWeibell(fastMachineBreakTimeAlpha, fastMachineBreakTimeBeta);
+            if(fastMachineBreakdownTimes[j] < nextFastMachineBreakTime){
+                nextFastMachineBreakTime = fastMachineBreakdownTimes[j];
+                nextFastMachineBreakNumber = j;
+            }
+        }
+
+    }
+    return 0;
+}
+
