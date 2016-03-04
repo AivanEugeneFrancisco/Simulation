@@ -13,34 +13,59 @@ double generateU(){
 double generateWeibell(double alpha, double beta){
     return beta * exp(((1/alpha)*log(-log(generateU()))));
 }
-double generateTimeToBreak(double parameter){
+/*double generateTimeToBreak(double parameter){
     return 6;
     //fill later
+}*/
+int indexOfSmallestElement(std::vector<double> array, int size){       //Find the index of the smallest element in an array
+    if(size <= 1){      //Catch cases where array size is too small for array[1] to work
+        return 0;
+    }
+    int index = 0;
+    for(int i = 1; i < size; i++){
+        if(array[i] < array[index])
+            index = i;
+    }
+    return index;
+}
+double generateProduction(double time, double workingSlow, double workingFast){     //Tells us how much was produced
+    return time * (15*workingSlow + 25*workingFast);        //Need actual values
 }
 
-
-int main()
-{
+int main(){
     srand(time(NULL)); //Randomize seed initialization
     double totalCosts[8];           //arrays to hold overall results for each configuration of machines to compare efficiency
     double totalRevenue[8];
     double machineDownTime[8];
-    double slowProductionRate = 0;              //Need actual values
-    double fastProductionRate = 0;              //Need actual values
+    double profitPerProduct = 5;                //Need actual values
     double slowMachineBreakTimeAlpha = 1;       //Need actual values
     double slowMachineBreakTimeBeta = 1;        //Need actual values
     double fastMachineBreakTimeAlpha = 2;       //Need actual values
     double fastMachineBreakTimeBeta = 2;        //Need actual values
+    double slowMachineFixTimeAlpha = 1;         //Need actual values
+    double slowMachineFixTimeBeta = 1;          //Need actual values
+    double fastMachineFixTimeAlpha = 2;         //Need actual values
+    double fastMachineFixTimeBeta = 2;          //Need actual values
+    double endTime = 10000;
     for(int i = 0; i <= 7; i++){    //go through each possible combination of types of machines where i is the number of fast machines
+        //counter variables
         double time = 0;
+        double production = 0;
+        double downTime = 0;
+        double costs = 0;
+        //state variables
         double slowRepairQueueLength = 0;
         double fastRepairQueueLength = 0;
+        double nextSlowRepairTime = 999999;
+        double nextFastRepairTime = 999999;
         double nextFastMachineBreakTime = 9999999;      //To know when the next machine will break
         double nextFastMachineBreakNumber = 0;          //To locate the machine that will break next
         double nextSlowMachineBreakTime = 9999999;
         double nextSlowMachineBreakNumber = 0;
-        std::vector<double> slowMachineBreakdownTimes;
+        std::vector<double> slowMachineBreakdownTimes;  //List of when each machine will break down
         std::vector<double> fastMachineBreakdownTimes;
+        int numWorkingFastMachines = i;
+        int numWorkingSlowMachines = (7-i);
         for(int j = 0; j < (7-i); j++){     //Initialize when each slow machine will break down
             slowMachineBreakdownTimes.push_back(generateWeibell(slowMachineBreakTimeAlpha, slowMachineBreakTimeBeta));
             if(slowMachineBreakdownTimes[j] < nextSlowMachineBreakTime){     //Finds the soonest event
@@ -50,12 +75,51 @@ int main()
         }
         for(int j = 0; j < fastMachineBreakdownTimes.size(); j++){     //Initialize when each fast machine will break down
             fastMachineBreakdownTimes[j] = generateWeibell(fastMachineBreakTimeAlpha, fastMachineBreakTimeBeta);
-            if(fastMachineBreakdownTimes[j] < nextFastMachineBreakTime){
+            if(fastMachineBreakdownTimes[j] < nextFastMachineBreakTime){    //Finds the soonest event
                 nextFastMachineBreakTime = fastMachineBreakdownTimes[j];
                 nextFastMachineBreakNumber = j;
             }
         }
-
+        while(time < endTime){      //Run the simulation after everything has been initialized
+            if(nextFastMachineBreakTime <= nextSlowMachineBreakTime && nextFastMachineBreakTime <= nextFastRepairTime && nextFastMachineBreakTime <= nextSlowRepairTime){
+                production += generateProduction((nextFastMachineBreakTime-time), numWorkingSlowMachines, numWorkingFastMachines);  //update counter variables
+                downTime += (nextFastMachineBreakTime - time) * (slowRepairQueueLength + fastRepairQueueLength);
+                time = nextFastMachineBreakTime;        //progress time
+                fastRepairQueueLength++;        //adjust appropriate state variables
+                numWorkingFastMachines--;
+                fastMachineBreakdownTimes[nextFastMachineBreakNumber] = 9999999;        //Machine is broken, it can't break again
+                nextFastMachineBreakNumber = indexOfSmallestElement(fastMachineBreakdownTimes,fastMachineBreakdownTimes.size());    //Reset next fast machine break index
+                nextFastMachineBreakTime = fastMachineBreakdownTimes[nextFastMachineBreakNumber];       //Reset next fast machine break time
+                if(fastRepairQueueLength == 1){
+                    nextFastRepairTime = generateWeibell(fastMachineFixTimeAlpha, fastMachineFixTimeBeta);
+                }
+            }
+            else if(nextSlowMachineBreakTime < nextFastMachineBreakTime && nextSlowMachineBreakTime < nextFastRepairTime && nextSlowMachineBreakTime < nextSlowRepairTime){
+                production += generateProduction((nextFastMachineBreakTime-time), numWorkingSlowMachines, numWorkingFastMachines);  //update counter variables
+                downTime += (nextSlowMachineBreakTime - time) * (slowRepairQueueLength + fastRepairQueueLength);
+                time = nextSlowMachineBreakTime;        //progress time
+                slowRepairQueueLength++;
+                numWorkingSlowMachines--;
+                slowMachineBreakdownTimes[nextSlowMachineBreakNumber] = 9999999;        //Machine is broken, it can't break again
+                nextSlowMachineBreakNumber = indexOfSmallestElement(slowMachineBreakdownTimes, slowMachineBreakdownTimes.size());
+                nextSlowMachineBreakTime = slowMachineBreakdownTimes[nextSlowMachineBreakNumber];
+                if(slowRepairQueueLength == 1){
+                    nextSlowRepairTime = generateWeibell(slowMachineFixTimeAlpha, slowMachineFixTimeBeta);
+                }
+            }
+            //Add the other 2 cases where a repair happens
+            //Also need to add in a way to measure if production goes below a certain value
+        }
+        totalCosts[i] = costs;
+        totalRevenue[i] = production*profitPerProduct;
+        machineDownTime[i] = downTime;
+    }
+    for(int i = 0; i <= 7; i++){
+        cout<<"With "<<i<<" fast machines and "<<(7-i)<<" slow machines, over a time length of "<<endTime<<", we had\n"
+           <<" -Total Costs = "<<totalCosts[i]<<"\n"
+           <<" -TotalRevenue = "<<totalRevenue[i]<<"\n"
+           <<" -Net Profit = "<<totalRevenue[i]-totalCosts[i]<<"\n"
+           <<" -Machine Down Time = "<<machineDownTime[i]<<"\n\n";
     }
     return 0;
 }
